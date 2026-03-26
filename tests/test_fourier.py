@@ -95,3 +95,33 @@ class TestIntensityStringFF:
             fourier.intensity(
                 (SINGLE_ATOM_POS, SINGLE_ATOM_SPECIES), Q, ff='unknown', progress=False
             )
+
+
+class TestNumbaVsNumpy:
+    """Verify Numba and NumPy paths produce identical results."""
+
+    def test_2d_grid_matches(self):
+        """Numba and NumPy paths should agree to machine precision."""
+        positions = np.array([
+            [0.0, 0.0, 0.0],
+            [1.95, 0.0, 0.0],
+            [0.0, 1.95, 0.0],
+            [0.0, 0.0, 1.95],
+        ])
+        species = np.array(["NB", "O", "O", "F"])
+        Q = zone_axis_grid([0, 0, 1], CELL, extent=3.0, npts=21)
+
+        # Numba path (if available)
+        I_default = fourier.intensity(
+            (positions, species), Q, ff=_constant_ff, progress=False
+        )
+
+        # Force NumPy path
+        saved = fourier._has_numba
+        fourier._has_numba = False
+        I_numpy = fourier.intensity(
+            (positions, species), Q, ff=_constant_ff, progress=False
+        )
+        fourier._has_numba = saved
+
+        np.testing.assert_allclose(I_default, I_numpy, rtol=1e-12)

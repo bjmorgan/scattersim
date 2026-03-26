@@ -144,35 +144,28 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
 })
 
-CMAPS = {
-    'batlow': cmc.batlow,
-    'lipari': cmc.lipari,
-}
-
-
 def plot_zone_axis(I, Q, title, filename_stem):
-    """Plot zone-axis pattern with both colourmaps."""
-    for cmap_name, cmap in CMAPS.items():
-        fig, ax = plt.subplots(figsize=(8, 8))
-        im = ax.imshow(
-            np.log10(I + 1),
-            extent=Q.extent,
-            origin='lower',
-            cmap=cmap,
-            aspect='equal',
-        )
-        ax.set_xlabel(f'Q along {Q.v1_label} ($\\AA^{{-1}}$)')
-        ax.set_ylabel(f'Q along {Q.v2_label} ($\\AA^{{-1}}$)')
-        ax.set_title(title)
-        # Colourbar matched to plot height
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="4%", pad=0.1)
-        plt.colorbar(im, cax=cax, label='$\\log_{10}(I+1)$')
-        plt.tight_layout()
-        fname = f'examples/{filename_stem}_{cmap_name}.png'
-        plt.savefig(fname, dpi=150)
-        plt.close(fig)
-        print(f"  Saved {fname}")
+    """Plot zone-axis pattern."""
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.imshow(
+        np.log10(I + 1),
+        extent=Q.extent,
+        origin='lower',
+        cmap=cmc.lipari,
+        aspect='equal',
+    )
+    ax.set_xlabel(f'Q along {Q.v1_label} ($\\AA^{{-1}}$)')
+    ax.set_ylabel(f'Q along {Q.v2_label} ($\\AA^{{-1}}$)')
+    ax.set_title(title)
+    # Colourbar matched to plot height
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="4%", pad=0.1)
+    plt.colorbar(im, cax=cax, label='$\\log_{10}(I+1)$')
+    plt.tight_layout()
+    fname = f'examples/{filename_stem}.png'
+    plt.savefig(fname, dpi=150)
+    plt.close(fig)
+    print(f"  Saved {fname}")
 
 
 # ============================================================
@@ -186,8 +179,8 @@ zones = [
 
 for uvw, title, stem in zones:
     label = str(uvw)
-    print(f"\nComputing {label} zone axis pattern (201x201)...")
-    Q = qgrid.zone_axis_grid(uvw, cell, extent=5.0, npts=201)
+    print(f"\nComputing {label} zone axis pattern...")
+    Q = qgrid.zone_axis_grid(uvw, cell, extent=5.0, npts=401)
     I = fourier.intensity((positions, species), Q, ff=electron_const, progress=True)
     plot_zone_axis(I, Q, title, stem)
 

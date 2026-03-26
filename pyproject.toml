@@ -13,6 +13,7 @@ dependencies = ["numpy"]
 dev = ["pytest", "mypy", "types-tqdm"]
 ase = ["ase"]
 tqdm = ["tqdm"]
+numba = ["numba"]
 
 [tool.setuptools.packages.find]
 include = ["scattersim*"]
@@ -27,4 +28,8 @@ warn_unused_configs = true
 
 [[tool.mypy.overrides]]
 module = "ase.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "numba.*"
 ignore_missing_imports = true
