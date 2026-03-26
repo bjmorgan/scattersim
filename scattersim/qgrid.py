@@ -4,6 +4,8 @@
 Builds arrays of Q-vectors in Cartesian inverse Angstroms for the Fourier
 engine. Supports 2D zone-axis grids and 1D reciprocal-space lines.
 """
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -26,7 +28,7 @@ class QGrid:
         Label for the vertical in-plane basis vector.
     """
     Q: np.ndarray
-    extent: tuple
+    extent: tuple[float, float, float, float]
     v1_label: str
     v2_label: str
 
@@ -67,7 +69,7 @@ def _reciprocal_lattice(cell: np.ndarray) -> np.ndarray:
 
 
 def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray,
-                         max_idx: int = 5) -> tuple:
+                         max_idx: int = 5) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Find two short reciprocal lattice vectors satisfying the zone condition.
 
     Finds hkl vectors satisfying u*h + v*k + w*l = 0 (Weiss zone law), then
@@ -141,7 +143,7 @@ def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray,
     return v1_cart, v2_cart, v1_hkl_reduced, v2_hkl_reduced
 
 
-def _lagrange_reduce_2d(v1: np.ndarray, v2: np.ndarray) -> tuple:
+def _lagrange_reduce_2d(v1: np.ndarray, v2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Lagrange (Gauss) reduction of a 2D lattice basis.
 
     Returns the two shortest basis vectors spanning the same lattice.
@@ -178,7 +180,7 @@ def _format_hkl(hkl: np.ndarray) -> str:
     return f"[{h},{k},{l}]"
 
 
-def zone_axis_grid(uvw, cell: np.ndarray, extent: float, npts: int) -> QGrid:
+def zone_axis_grid(uvw: np.ndarray | list[int], cell: np.ndarray, extent: float, npts: int) -> QGrid:
     """Build a 2D Q-grid for a zone-axis diffraction pattern.
 
     Parameters
@@ -237,7 +239,8 @@ def zone_axis_grid(uvw, cell: np.ndarray, extent: float, npts: int) -> QGrid:
     )
 
 
-def line_grid(start, end, cell: np.ndarray, npts: int) -> QLine:
+def line_grid(start: np.ndarray | list[float], end: np.ndarray | list[float],
+              cell: np.ndarray, npts: int) -> QLine:
     """Build a 1D Q-grid along a line in reciprocal space.
 
     Parameters

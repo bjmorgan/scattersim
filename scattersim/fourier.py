@@ -6,7 +6,10 @@ Computes I(Q) = |F(Q)|^2 where F(Q) = sum_j f_j(|Q|) exp(i Q . r_j).
 Uses Numba JIT compilation with parallel row iteration when available,
 falling back to pure NumPy otherwise.
 """
+from __future__ import annotations
+
 import math
+from typing import Callable
 
 import numpy as np
 
@@ -27,18 +30,25 @@ except ImportError:
     _has_numba = False
 
 
-def _progress_range(n: int, **kwargs):
+def _progress_range(n: int, **kwargs: object) -> range:
     """Row iterator with optional tqdm progress bar."""
     if _has_tqdm:
-        return trange(n, **kwargs)
+        return trange(n, **kwargs)  # type: ignore[call-overload,return-value,no-any-return]
     return range(n)
 
 
-def _resolve_ff(ff):
-    """Resolve form factor argument to a callable."""
+_FFFunc = Callable[[str, np.ndarray], np.ndarray]
+
+
+def _resolve_ff(ff: str | _FFFunc) -> _FFFunc:
+    """Resolve form factor string or callable to a form factor function.
+
+    Accepts 'xray', 'xray-discus', 'electron', or a callable with
+    signature (species: str, s: np.ndarray) -> np.ndarray.
+    """
     if callable(ff):
         return ff
-    dispatch = {
+    dispatch: dict[str, _FFFunc] = {
         'xray': ff_module.waasmaier_kirfel,
         'xray-discus': ff_module.waasmaier_kirfel_discus,
         'electron': ff_module.peng,
@@ -91,7 +101,8 @@ if _has_numba:
 # Form factor pre-evaluation (cached across frames)
 # ============================================================
 
-def _build_ff_cache(unique_species, Q_array, ff_func):
+def _build_ff_cache(unique_species: list[str], Q_array: np.ndarray,
+                    ff_func: _FFFunc) -> tuple[np.ndarray, dict[str, int]]:
     """Pre-evaluate form factors for all species at all Q-points.
 
     This only depends on the Q-grid and species list, not on atom positions,
@@ -137,7 +148,8 @@ def _build_ff_cache(unique_species, Q_array, ff_func):
 # Single-frame computation
 # ============================================================
 
-def _compute_2d_numba(positions, atom_sp_idx, Q_array, f_species):
+def _compute_2d_numba(positions: np.ndarray, atom_sp_idx: np.ndarray,
+                      Q_array: np.ndarray, f_species: np.ndarray) -> np.ndarray:
     """Compute I(Q) for a 2D grid using Numba."""
     n2, n1, _ = Q_array.shape
     I_out = np.empty((n2, n1), dtype=np.float64)
@@ -145,7 +157,9 @@ def _compute_2d_numba(positions, atom_sp_idx, Q_array, f_species):
     return I_out
 
 
-def _compute_2d_numpy(positions, atom_sp_idx, Q_array, f_species, progress, desc):
+def _compute_2d_numpy(positions: np.ndarray, atom_sp_idx: np.ndarray,
+                      Q_array: np.ndarray, f_species: np.ndarray,
+                      progress: bool, desc: str) -> np.ndarray:
     """Compute I(Q) for a 2D grid using pure NumPy."""
     n2, n1, _ = Q_array.shape
     N = positions.shape[0]
@@ -165,7 +179,8 @@ def _compute_2d_numpy(positions, atom_sp_idx, Q_array, f_species, progress, desc
     return I_out
 
 
-def _compute_1d(positions, atom_sp_idx, Q_array, f_species):
+def _compute_1d(positions: np.ndarray, atom_sp_idx: np.ndarray,
+                Q_array: np.ndarray, f_species: np.ndarray) -> np.ndarray:
     """Compute I(Q) for a 1D line."""
     phases = positions @ Q_array.T  # (N, npts)
     exp_phases = np.exp(1j * phases)
@@ -174,14 +189,19 @@ def _compute_1d(positions, atom_sp_idx, Q_array, f_species):
     f_line = f_species[atom_sp_idx, :]  # (N, npts)
 
     F = np.sum(f_line * exp_phases, axis=0)  # (npts,)
-    return np.abs(F) ** 2
+    result: np.ndarray = np.abs(F) ** 2
+    return result
 
 
 # ============================================================
 # Public API
 # ============================================================
 
-def intensity(source, Q, ff, progress=True):
+_Frame = tuple[np.ndarray, np.ndarray]
+
+
+def intensity(source: _Frame | list[_Frame], Q: QGrid | QLine,
+              ff: str | _FFFunc, progress: bool = True) -> np.ndarray:
     """Compute scattering intensity I(Q) = |F(Q)|^2.
 
     Parameters
@@ -228,7 +248,12 @@ def intensity(source, Q, ff, progress=True):
     # Pre-evaluate form factors once for the Q-grid (cached across frames)
     f_species, sp_to_idx = _build_ff_cache(unique_species, Q_array, ff_func)
 
-    I_sum = None
+    if is_2d:
+        n2, n1, _ = Q_array.shape
+        I_sum: np.ndarray = np.zeros((n2, n1), dtype=np.float64)
+    else:
+        npts = Q_array.shape[0]
+        I_sum = np.zeros(npts, dtype=np.float64)
 
     for i, (positions, species) in enumerate(frames):
         positions = np.asarray(positions, dtype=np.float64)
@@ -239,19 +264,14 @@ def intensity(source, Q, ff, progress=True):
 
         if is_2d:
             if _has_numba:
-                I_frame = _compute_2d_numba(positions, atom_sp_idx, Q_array, f_species)
+                I_sum += _compute_2d_numba(positions, atom_sp_idx, Q_array, f_species)
             else:
                 desc = (f"Frame {i+1}/{n_frames}" if n_frames > 1
                         else "Computing I(Q)")
-                I_frame = _compute_2d_numpy(
+                I_sum += _compute_2d_numpy(
                     positions, atom_sp_idx, Q_array, f_species, progress, desc
                 )
         else:
-            I_frame = _compute_1d(positions, atom_sp_idx, Q_array, f_species)
-
-        if I_sum is None:
-            I_sum = I_frame
-        else:
-            I_sum += I_frame
+            I_sum += _compute_1d(positions, atom_sp_idx, Q_array, f_species)
 
     return I_sum / n_frames

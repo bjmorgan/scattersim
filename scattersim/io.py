@@ -4,10 +4,14 @@ Unpacks external structure formats (ASE Atoms) into scattersim's internal
 representation (plain NumPy arrays). Also provides DISCUS .stru file I/O
 for validation.
 """
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 
 
-def from_ase(atoms, species_map: dict):
+def from_ase(atoms: Any, species_map: dict[str, str]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Unpack an ASE Atoms object into scattersim's internal representation.
 
     Parameters
@@ -47,7 +51,7 @@ def from_ase(atoms, species_map: dict):
 
 
 def write_stru(filename: str, positions: np.ndarray, species: np.ndarray,
-               cell: np.ndarray, title: str = ""):
+               cell: np.ndarray, title: str = "") -> None:
     """Write a DISCUS .stru file.
 
     Parameters
@@ -94,7 +98,7 @@ def write_stru(filename: str, positions: np.ndarray, species: np.ndarray,
                     f"       1,       0,       0,   1.000000\n")
 
 
-def read_stru(filename: str):
+def read_stru(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Read a DISCUS .stru file.
 
     Parameters

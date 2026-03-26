@@ -32,8 +32,8 @@ def _peng_table() -> dict[str, dict]:
     return _load_table("peng.json")
 
 
-def _eval_five_gaussian(a: list, b: list, c: float, s: np.ndarray) -> np.ndarray:
-    """Evaluate f(s) = sum_i a_i exp(-b_i s^2) + c."""
+def _eval_five_gaussian(a: list[float], b: list[float], c: float, s: np.ndarray) -> np.ndarray:
+    """Evaluate the 5-Gaussian form factor: f(s) = sum_i a_i exp(-b_i s^2) + c."""
     s2 = s ** 2
     result = np.full_like(s, c, dtype=np.float64)
     for ai, bi in zip(a, b):
@@ -83,6 +83,18 @@ def waasmaier_kirfel_discus(species: str, s: np.ndarray) -> np.ndarray:
     2. Discretisation of s to 0.001 increments (lookup table)
 
     For validation against DISCUS output only.
+
+    Parameters
+    ----------
+    species : str
+        Element or ion label, e.g. 'NB', 'O2-'.
+    s : np.ndarray
+        Scattering vector magnitudes s = |Q| / (4 pi) in inverse Angstroms.
+
+    Returns
+    -------
+    np.ndarray
+        Form factor values, same shape as s.
     """
     table = _wk_table()
     key = species.upper()
