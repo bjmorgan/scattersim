@@ -1,3 +1,6 @@
+# Generated images
+examples/*.png
+
 # Claude Code local files
 CLAUDE.md
 .claude/
