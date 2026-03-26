@@ -63,12 +63,15 @@ def write_stru(filename: str, positions: np.ndarray, species: np.ndarray,
     title : str
         Title line for the file.
     """
-    # Check for orthorhombic cell (off-diagonal elements must be zero)
+    # Cell must be a diagonal matrix (Cartesian-aligned orthorhombic).
+    # Rotated orthorhombic cells are not supported — coordinates would
+    # also need rotation, which this function does not do.
     off_diag = cell - np.diag(np.diag(cell))
     if np.any(np.abs(off_diag) > 1e-6):
         raise ValueError(
-            "write_stru only supports orthorhombic cells. "
-            f"Off-diagonal elements are non-zero: {off_diag}"
+            "write_stru requires a diagonal cell matrix (Cartesian-aligned "
+            "orthorhombic). Got off-diagonal elements: "
+            f"{off_diag[np.abs(off_diag) > 1e-6]}"
         )
     a, b, c = np.linalg.norm(cell, axis=1)
     # Convert to fractional coordinates

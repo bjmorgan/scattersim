@@ -7,7 +7,6 @@ Uses Numba JIT compilation with parallel row iteration when available,
 falling back to pure NumPy otherwise.
 """
 import math
-import warnings
 
 import numpy as np
 
@@ -26,11 +25,6 @@ try:
     import numba
 except ImportError:
     _has_numba = False
-    warnings.warn(
-        "Numba not installed — Fourier engine will use pure NumPy (~19x slower). "
-        "Install with: pip install numba",
-        stacklevel=2,
-    )
 
 
 def _progress_range(n: int, **kwargs):

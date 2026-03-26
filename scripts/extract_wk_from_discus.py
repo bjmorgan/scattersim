@@ -9,14 +9,16 @@ float32 truncation at compile time). We extract these source-text values
 directly.
 """
 
+import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
-DISCUS_SOURCE = Path(
+DEFAULT_SOURCE = Path(
     "/Users/bjm42/source/DiffuseCode/lib_f90/element_data_mod.f90"
 )
-OUTPUT = Path(__file__).resolve().parent.parent / "scattersim" / "data" / "waasmaier_kirfel.json"
+DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "scattersim" / "data" / "waasmaier_kirfel.json"
 
 
 def extract_fortran_array(text: str, array_name: str) -> list[str]:
@@ -56,8 +58,11 @@ def extract_character_array(text: str, array_name: str) -> list[str]:
     return [n.strip() for n in names]
 
 
-def main():
-    text = DISCUS_SOURCE.read_text()
+def main(source: Path = DEFAULT_SOURCE, output: Path = DEFAULT_OUTPUT):
+    if not source.exists():
+        print(f"Error: DISCUS source not found at {source}", file=sys.stderr)
+        sys.exit(1)
+    text = source.read_text()
 
     names = extract_character_array(text, "per_name")
     print(f"Found {len(names)} element/ion names")
@@ -113,10 +118,10 @@ def main():
         "elements": elements,
     }
 
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT, "w") as f:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with open(output, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"Written to {OUTPUT}")
+    print(f"Written to {output}")
 
     # Spot-check: sum(a) + c should approximate Z for neutral atoms
     spot_checks = [
@@ -132,4 +137,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source", nargs="?", type=Path, default=DEFAULT_SOURCE,
+                        help="Path to DISCUS element_data_mod.f90")
+    parser.add_argument("-o", "--output", type=Path, default=DEFAULT_OUTPUT,
+                        help="Output JSON path")
+    args = parser.parse_args()
+    main(source=args.source, output=args.output)

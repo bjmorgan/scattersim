@@ -193,7 +193,11 @@ def zone_axis_grid(uvw, cell: np.ndarray, extent: float, npts: int) -> QGrid:
     Returns
     -------
     QGrid
-        2D grid of Q-vectors with metadata for plotting.
+        2D grid of Q-vectors with metadata for plotting. The grid axes are
+        orthogonalised (Gram-Schmidt) so pixels are square. v1_label and
+        v2_label refer to the pre-orthogonalisation reduced basis vectors;
+        for non-cubic cells, the vertical axis may deviate slightly from
+        the labelled direction.
     """
     uvw = np.asarray(uvw, dtype=int)
     cell = np.asarray(cell, dtype=float)
@@ -201,6 +205,8 @@ def zone_axis_grid(uvw, cell: np.ndarray, extent: float, npts: int) -> QGrid:
         raise ValueError(f"npts must be >= 2, got {npts}")
     if extent <= 0:
         raise ValueError(f"extent must be > 0, got {extent}")
+    if not np.any(uvw):
+        raise ValueError(f"uvw must be a non-zero zone axis direction, got {uvw}")
     recip = _reciprocal_lattice(cell)
 
     v1_cart, v2_cart, v1_hkl, v2_hkl = _find_in_plane_basis(uvw, recip)

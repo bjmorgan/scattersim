@@ -9,14 +9,16 @@ appear to use the 5-Gaussian form f(s) = sum_i a_i * exp(-b_i * s^2).
 The provenance (Peng vs Doyle-Turner vs other) needs verification.
 """
 
+import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
-DISCUS_SOURCE = Path(
+DEFAULT_SOURCE = Path(
     "/Users/bjm42/source/DiffuseCode/lib_f90/element_data_mod.f90"
 )
-OUTPUT = Path(__file__).resolve().parent.parent / "scattersim" / "data" / "peng.json"
+DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "scattersim" / "data" / "peng.json"
 
 
 def extract_fortran_array(text: str, array_name: str) -> list[str]:
@@ -48,8 +50,11 @@ def extract_character_array(text: str, array_name: str) -> list[str]:
     return [n.strip() for n in names]
 
 
-def main():
-    text = DISCUS_SOURCE.read_text()
+def main(source: Path = DEFAULT_SOURCE, output: Path = DEFAULT_OUTPUT):
+    if not source.exists():
+        print(f"Error: DISCUS source not found at {source}", file=sys.stderr)
+        sys.exit(1)
+    text = source.read_text()
 
     names = extract_character_array(text, "per_name")
 
@@ -95,10 +100,10 @@ def main():
         "elements": elements,
     }
 
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT, "w") as f:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with open(output, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"Written to {OUTPUT}")
+    print(f"Written to {output}")
 
     # Spot-check: print Nb, O, F entries
     for symbol in ("NB", "O", "F"):
@@ -110,4 +115,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source", nargs="?", type=Path, default=DEFAULT_SOURCE,
+                        help="Path to DISCUS element_data_mod.f90")
+    parser.add_argument("-o", "--output", type=Path, default=DEFAULT_OUTPUT,
+                        help="Output JSON path")
+    args = parser.parse_args()
+    main(source=args.source, output=args.output)
