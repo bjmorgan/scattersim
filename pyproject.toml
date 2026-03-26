@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scattersim"
+version = "0.1.0"
+description = "Kinematic scattering simulation from supercell structures"
+requires-python = ">=3.10"
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+ase = ["ase"]
+tqdm = ["tqdm"]
+
+[tool.setuptools.packages.find]
+include = ["scattersim*"]
+
+[tool.setuptools.package-data]
+scattersim = ["data/*.json"]
