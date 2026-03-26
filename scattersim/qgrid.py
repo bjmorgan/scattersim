@@ -66,7 +66,8 @@ def _reciprocal_lattice(cell: np.ndarray) -> np.ndarray:
     return 2 * np.pi * np.linalg.inv(cell).T
 
 
-def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray) -> tuple:
+def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray,
+                         max_idx: int = 5) -> tuple:
     """Find two short reciprocal lattice vectors satisfying the zone condition.
 
     Finds hkl vectors satisfying u*h + v*k + w*l = 0 (Weiss zone law), then
@@ -79,6 +80,9 @@ def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray) -> tuple:
         Zone axis direction in direct-space Miller indices.
     recip : np.ndarray
         Shape (3, 3). Reciprocal lattice vectors as rows.
+    max_idx : int
+        Maximum |h|, |k|, |l| to search. Default 5 is sufficient for
+        common zone axes; increase for high-index axes in low-symmetry cells.
 
     Returns
     -------
@@ -89,7 +93,6 @@ def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray) -> tuple:
     """
     # Search for hkl satisfying the zone condition: u*h + v*k + w*l = 0
     u, v, w = uvw
-    max_idx = 5
     candidates = []
     for h in range(-max_idx, max_idx + 1):
         for k in range(-max_idx, max_idx + 1):
@@ -166,7 +169,7 @@ def _fmt_point(p: np.ndarray) -> str:
     """Format a reciprocal-space point as a label string."""
     if np.allclose(p, np.rint(p)):
         return ",".join(str(int(x)) for x in np.rint(p))
-    return ",".join(f"{x:.2g}" for x in p)
+    return ",".join(f"{x:.3f}".rstrip("0").rstrip(".") for x in p)
 
 
 def _format_hkl(hkl: np.ndarray) -> str:

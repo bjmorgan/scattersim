@@ -15,7 +15,7 @@ import numpy as np
 
 def _load_table(filename: str) -> dict[str, dict]:
     """Load a form factor JSON table from the data directory."""
-    ref = resources.files("scattersim.data").joinpath(filename)
+    ref = resources.files("scattersim").joinpath("data", filename)
     with resources.as_file(ref) as path:
         data: dict = json.loads(path.read_text())
     result: dict[str, dict] = data["elements"]
