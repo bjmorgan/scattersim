@@ -69,8 +69,9 @@ def _reciprocal_lattice(cell: np.ndarray) -> np.ndarray:
 def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray) -> tuple:
     """Find two short reciprocal lattice vectors satisfying the zone condition.
 
-    Searches for hkl vectors satisfying u*h + v*k + w*l = 0, then applies
-    2D Lagrange (Gauss) reduction to find the two shortest independent vectors.
+    Finds hkl vectors satisfying u*h + v*k + w*l = 0 (Weiss zone law), then
+    applies 2D Lagrange (Gauss) reduction to obtain the two shortest
+    independent vectors.
 
     Parameters
     ----------
@@ -196,6 +197,10 @@ def zone_axis_grid(uvw, cell: np.ndarray, extent: float, npts: int) -> QGrid:
     """
     uvw = np.asarray(uvw, dtype=int)
     cell = np.asarray(cell, dtype=float)
+    if npts < 2:
+        raise ValueError(f"npts must be >= 2, got {npts}")
+    if extent <= 0:
+        raise ValueError(f"extent must be > 0, got {extent}")
     recip = _reciprocal_lattice(cell)
 
     v1_cart, v2_cart, v1_hkl, v2_hkl = _find_in_plane_basis(uvw, recip)
@@ -243,13 +248,15 @@ def line_grid(start, end, cell: np.ndarray, npts: int) -> QLine:
     start = np.asarray(start, dtype=float)
     end = np.asarray(end, dtype=float)
     cell = np.asarray(cell, dtype=float)
+    if npts < 2:
+        raise ValueError(f"npts must be >= 2, got {npts}")
     recip = _reciprocal_lattice(cell)
 
     Q_start = start @ recip
     Q_end = end @ recip
 
     t = np.linspace(0, 1, npts)
-    Q = Q_start[np.newaxis, :] + t[:, np.newaxis] * (Q_end - Q_start)[np.newaxis, :]
+    Q = Q_start + np.outer(t, Q_end - Q_start)
 
     q_scalar = np.linalg.norm(Q - Q_start, axis=1)
 

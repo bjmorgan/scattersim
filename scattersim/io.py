@@ -81,11 +81,11 @@ def write_stru(filename: str, positions: np.ndarray, species: np.ndarray,
         f.write(f"cell  {a:10.6f},{b:10.6f},{c:10.6f}, 90.000000, 90.000000, 90.000000\n")
         f.write("ncell  1, 1, 1, {}\n".format(len(species)))
         f.write("atoms\n")
-        for i in range(len(species)):
-            name = f"{species[i]:<4s}"
-            cx = f"{frac[i, 0]:14.6f},"
-            cy = f"{frac[i, 1]:14.6f},"
-            cz = f"{frac[i, 2]:14.6f},"
+        for sp, xyz in zip(species, frac):
+            name = f"{sp:<4s}"
+            cx = f"{xyz[0]:14.6f},"
+            cy = f"{xyz[1]:14.6f},"
+            cz = f"{xyz[2]:14.6f},"
             biso = f"{0.5:14.6f},"
             f.write(f"{name}{cx:>16s}{cy:>16s}{cz:>16s}{biso:>16s}"
                     f"       1,       0,       0,   1.000000\n")
