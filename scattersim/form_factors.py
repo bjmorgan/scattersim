@@ -72,14 +72,14 @@ def waasmaier_kirfel(species: str, s: np.ndarray) -> np.ndarray:
             f"Available: {sorted(table.keys())[:10]}..."
         )
     entry = table[key]
-    return _eval_five_gaussian(entry["a"], entry["b"], entry.get("c", 0.0), s)
+    return _eval_five_gaussian(entry["a"], entry["b"], entry["c"], s)
 
 
 def waasmaier_kirfel_discus(species: str, s: np.ndarray) -> np.ndarray:
     """Evaluate X-ray form factor with DISCUS-matching degradation.
 
     Replicates two DISCUS numerical artefacts:
-    1. Float32 promotion bug in Fortran literal constants (~1e-7 per coefficient)
+    1. Float32 truncation in Fortran literal constants (~1e-7 per coefficient)
     2. Discretisation of s to 0.001 increments (lookup table)
 
     For validation against DISCUS output only.

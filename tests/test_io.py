@@ -66,3 +66,25 @@ class TestStruIO:
                 io.write_stru(fname, positions, species, cell)
         finally:
             os.unlink(fname)
+
+    def test_read_stru_missing_cell_raises(self):
+        """read_stru should raise ValueError if no cell line is found."""
+        with tempfile.NamedTemporaryFile(suffix=".stru", mode='w', delete=False) as f:
+            f.write("title test\nspcgr P 1\natoms\nNB  0.0, 0.0, 0.0, 0.5\n")
+            fname = f.name
+        try:
+            with pytest.raises(ValueError, match="No cell"):
+                io.read_stru(fname)
+        finally:
+            os.unlink(fname)
+
+    def test_read_stru_malformed_atom_raises(self):
+        """read_stru should give a context-aware error for bad atom lines."""
+        with tempfile.NamedTemporaryFile(suffix=".stru", mode='w', delete=False) as f:
+            f.write("title test\ncell 3.9, 3.9, 3.9, 90, 90, 90\natoms\nNB  bad_data\n")
+            fname = f.name
+        try:
+            with pytest.raises(ValueError, match="cannot parse atom line"):
+                io.read_stru(fname)
+        finally:
+            os.unlink(fname)

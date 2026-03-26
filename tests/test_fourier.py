@@ -100,28 +100,45 @@ class TestIntensityStringFF:
 class TestNumbaVsNumpy:
     """Verify Numba and NumPy paths produce identical results."""
 
-    def test_2d_grid_matches(self):
-        """Numba and NumPy paths should agree to machine precision."""
-        positions = np.array([
-            [0.0, 0.0, 0.0],
-            [1.95, 0.0, 0.0],
-            [0.0, 1.95, 0.0],
-            [0.0, 0.0, 1.95],
-        ])
-        species = np.array(["NB", "O", "O", "F"])
-        Q = zone_axis_grid([0, 0, 1], CELL, extent=3.0, npts=21)
+    POSITIONS = np.array([
+        [0.0, 0.0, 0.0],
+        [1.95, 0.0, 0.0],
+        [0.0, 1.95, 0.0],
+        [0.0, 0.0, 1.95],
+    ])
+    SPECIES = np.array(["NB", "O", "O", "F"])
 
-        # Numba path (if available)
-        I_default = fourier.intensity(
-            (positions, species), Q, ff=_constant_ff, progress=False
-        )
-
-        # Force NumPy path
-        saved = fourier._has_numba
-        fourier._has_numba = False
-        I_numpy = fourier.intensity(
-            (positions, species), Q, ff=_constant_ff, progress=False
-        )
-        fourier._has_numba = saved
-
+    def _compare_paths(self, source, Q, monkeypatch):
+        """Run both Numba and NumPy paths and assert they match."""
+        I_default = fourier.intensity(source, Q, ff=_constant_ff, progress=False)
+        monkeypatch.setattr(fourier, '_has_numba', False)
+        I_numpy = fourier.intensity(source, Q, ff=_constant_ff, progress=False)
         np.testing.assert_allclose(I_default, I_numpy, rtol=1e-12)
+
+    def test_2d_grid_matches(self, monkeypatch):
+        Q = zone_axis_grid([0, 0, 1], CELL, extent=3.0, npts=21)
+        self._compare_paths((self.POSITIONS, self.SPECIES), Q, monkeypatch)
+
+    def test_1d_line_matches(self, monkeypatch):
+        Q = line_grid([0, 0, 0], [4, 0, 0], CELL, npts=101)
+        self._compare_paths((self.POSITIONS, self.SPECIES), Q, monkeypatch)
+
+
+class TestEdgeCases:
+    """Edge cases and error handling."""
+
+    def test_empty_frames_raises(self):
+        Q = zone_axis_grid([0, 0, 1], CELL, extent=1.0, npts=3)
+        with pytest.raises(ValueError, match="at least one frame"):
+            fourier.intensity([], Q, ff=_constant_ff)
+
+    def test_multi_frame_distinct_frames(self):
+        """Averaging two different frames should differ from either alone."""
+        Q = zone_axis_grid([0, 0, 1], CELL, extent=2.0, npts=5)
+        frame1 = (np.array([[0.0, 0.0, 0.0]]), np.array(["NB"]))
+        frame2 = (np.array([[1.0, 0.0, 0.0]]), np.array(["NB"]))
+        I1 = fourier.intensity(frame1, Q, ff=_constant_ff, progress=False)
+        I2 = fourier.intensity(frame2, Q, ff=_constant_ff, progress=False)
+        I_avg = fourier.intensity([frame1, frame2], Q, ff=_constant_ff, progress=False)
+        # Average should be (I1 + I2) / 2
+        np.testing.assert_allclose(I_avg, (I1 + I2) / 2, rtol=1e-12)

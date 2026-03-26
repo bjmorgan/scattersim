@@ -34,6 +34,13 @@ def from_ase(atoms, species_map: dict):
     """
     positions = atoms.positions.copy()
     symbols = atoms.get_chemical_symbols()
+    missing = set(symbols) - set(species_map.keys())
+    if missing:
+        raise KeyError(
+            f"Elements {missing} not in species_map. "
+            f"Provide mappings for all elements. "
+            f"species_map keys: {set(species_map.keys())}"
+        )
     species = np.array([species_map[s] for s in symbols])
     cell = np.array(atoms.cell)
     return positions, species, cell
@@ -50,7 +57,7 @@ def write_stru(filename: str, positions: np.ndarray, species: np.ndarray,
     positions : np.ndarray, shape (N, 3)
         Cartesian coordinates in Angstroms.
     species : np.ndarray, shape (N,)
-        Species labels (4-char DISCUS names, e.g. 'NB', 'O', 'F').
+        Species labels (e.g. 'NB', 'O', 'F'). Padded to 4-char field width on output.
     cell : np.ndarray, shape (3, 3)
         Cell vectors in Angstroms. Assumes orthorhombic (uses diagonal).
     title : str
@@ -107,28 +114,40 @@ def read_stru(filename: str):
 
     with open(filename) as f:
         in_atoms = False
-        for line in f:
-            line = line.strip()
+        for line_no, raw_line in enumerate(f, 1):
+            line = raw_line.strip()
             if line.startswith("cell"):
-                parts = line.replace("cell", "").strip().split(",")
-                a = float(parts[0])
-                b = float(parts[1])
-                c = float(parts[2])
+                try:
+                    parts = line.replace("cell", "").strip().split(",")
+                    a = float(parts[0])
+                    b = float(parts[1])
+                    c = float(parts[2])
+                except (IndexError, ValueError) as e:
+                    raise ValueError(
+                        f"{filename}:{line_no}: cannot parse cell line: {line!r}"
+                    ) from e
                 cell = np.diag([a, b, c])
             elif line == "atoms":
                 in_atoms = True
             elif in_atoms and line:
-                tokens = line.split()
-                name = tokens[0]
-                # Rejoin and split by comma
-                rest = line[len(name):].strip()
-                vals = [v.strip() for v in rest.split(",")]
-                x, y, z = float(vals[0]), float(vals[1]), float(vals[2])
+                try:
+                    tokens = line.split()
+                    name = tokens[0]
+                    rest = line[len(name):].strip()
+                    vals = [v.strip() for v in rest.split(",")]
+                    x, y, z = float(vals[0]), float(vals[1]), float(vals[2])
+                except (IndexError, ValueError) as e:
+                    raise ValueError(
+                        f"{filename}:{line_no}: cannot parse atom line: {line!r}"
+                    ) from e
                 species_list.append(name)
                 frac_list.append([x, y, z])
 
     if cell is None:
-        raise ValueError(f"No cell found in {filename}")
+        raise ValueError(f"No cell line found in {filename}")
+
+    if not species_list:
+        raise ValueError(f"No atoms found in {filename}")
 
     frac = np.array(frac_list)
     positions = frac @ cell  # fractional to Cartesian

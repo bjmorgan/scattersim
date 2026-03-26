@@ -7,6 +7,7 @@ Uses Numba JIT compilation with parallel row iteration when available,
 falling back to pure NumPy otherwise.
 """
 import math
+import warnings
 
 import numpy as np
 
@@ -25,6 +26,11 @@ try:
     import numba
 except ImportError:
     _has_numba = False
+    warnings.warn(
+        "Numba not installed — Fourier engine will use pure NumPy (~19x slower). "
+        "Install with: pip install numba",
+        stacklevel=2,
+    )
 
 
 def _progress_range(n: int, **kwargs):
@@ -117,11 +123,12 @@ def _build_ff_cache(unique_species, Q_array, ff_func):
 
     if Q_array.ndim == 3:
         n2, n1, _ = Q_array.shape
+        # Compute s for entire grid at once: (n2, n1)
+        s_grid = np.linalg.norm(Q_array, axis=2) / (4 * np.pi)
         f_species = np.empty((n_sp, n2, n1), dtype=np.float64)
         for i_sp, sp in enumerate(unique_species):
             for i2 in range(n2):
-                s_row = np.linalg.norm(Q_array[i2, :, :], axis=1) / (4 * np.pi)
-                f_species[i_sp, i2, :] = ff_func(sp, s_row)
+                f_species[i_sp, i2, :] = ff_func(sp, s_grid[i2, :])
     else:
         npts = Q_array.shape[0]
         s = np.linalg.norm(Q_array, axis=1) / (4 * np.pi)
@@ -202,7 +209,7 @@ def intensity(source, Q, ff, progress=True):
     Returns
     -------
     np.ndarray
-        Scattering intensity. Shape (npts, npts) for QGrid, (npts,) for QLine.
+        Scattering intensity. Shape (n2, n1) for QGrid, (npts,) for QLine.
     """
     ff_func = _resolve_ff(ff)
     Q_array = Q.Q
@@ -215,11 +222,14 @@ def intensity(source, Q, ff, progress=True):
         frames = [source]
 
     n_frames = len(frames)
+    if n_frames == 0:
+        raise ValueError("source must contain at least one frame.")
 
-    # Get unique species from first frame (assumed consistent across frames)
-    _, first_species = frames[0]
-    first_species = np.asarray(first_species)
-    unique_species = sorted(set(first_species))
+    # Gather unique species from all frames
+    all_species: set[str] = set()
+    for _, sp in frames:
+        all_species.update(np.asarray(sp))
+    unique_species = sorted(all_species)
 
     # Pre-evaluate form factors once for the Q-grid (cached across frames)
     f_species, sp_to_idx = _build_ff_cache(unique_species, Q_array, ff_func)

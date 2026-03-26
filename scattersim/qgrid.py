@@ -67,10 +67,9 @@ def _reciprocal_lattice(cell: np.ndarray) -> np.ndarray:
 
 
 def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray) -> tuple:
-    """Find two short in-plane reciprocal lattice vectors perpendicular to uvw.
+    """Find two short reciprocal lattice vectors satisfying the zone condition.
 
-    Projects the reciprocal lattice into the plane perpendicular to the zone
-    axis direction (expressed in direct-space Miller indices), then applies
+    Searches for hkl vectors satisfying u*h + v*k + w*l = 0, then applies
     2D Lagrange (Gauss) reduction to find the two shortest independent vectors.
 
     Parameters
@@ -87,9 +86,7 @@ def _find_in_plane_basis(uvw: np.ndarray, recip: np.ndarray) -> tuple:
     v1_hkl, v2_hkl : np.ndarray
         Miller indices of v1 and v2.
     """
-    # Zone axis in Cartesian (direct space direction)
-    # Actually uvw . hkl = 0 defines the zone condition
-    # We search over hkl to find vectors perpendicular to uvw
+    # Search for hkl satisfying the zone condition: u*h + v*k + w*l = 0
     u, v, w = uvw
     max_idx = 5
     candidates = []
@@ -153,14 +150,15 @@ def _lagrange_reduce_2d(v1: np.ndarray, v2: np.ndarray) -> tuple:
         v2 = v2 - mu * v1
         if np.dot(v2, v2) >= np.dot(v1, v1):
             break
-    # Enforce deterministic orientation: first non-negligible component is positive
-    idx = np.flatnonzero(np.abs(v1) > 1e-10)
-    if len(idx) > 0 and v1[idx[0]] < 0:
-        v1 = -v1
-    idx = np.flatnonzero(np.abs(v2) > 1e-10)
-    if len(idx) > 0 and v2[idx[0]] < 0:
-        v2 = -v2
-    return v1, v2
+    return _orient_positive(v1), _orient_positive(v2)
+
+
+def _orient_positive(v: np.ndarray) -> np.ndarray:
+    """Flip vector so its first non-negligible component is positive."""
+    idx = np.flatnonzero(np.abs(v) > 1e-10)
+    if len(idx) > 0 and v[idx[0]] < 0:
+        return -v
+    return v
 
 
 def _fmt_point(p: np.ndarray) -> str:
