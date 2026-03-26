@@ -13,21 +13,22 @@ from importlib import resources
 import numpy as np
 
 
-def _load_table(filename: str) -> dict:
+def _load_table(filename: str) -> dict[str, dict]:
     """Load a form factor JSON table from the data directory."""
     ref = resources.files("scattersim.data").joinpath(filename)
     with resources.as_file(ref) as path:
-        data = json.loads(path.read_text())
-    return data["elements"]
+        data: dict = json.loads(path.read_text())
+    result: dict[str, dict] = data["elements"]
+    return result
 
 
 @lru_cache(maxsize=1)
-def _wk_table() -> dict:
+def _wk_table() -> dict[str, dict]:
     return _load_table("waasmaier_kirfel.json")
 
 
 @lru_cache(maxsize=1)
-def _peng_table() -> dict:
+def _peng_table() -> dict[str, dict]:
     return _load_table("peng.json")
 
 

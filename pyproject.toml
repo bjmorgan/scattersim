@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
-dev = ["pytest", "mypy"]
+dev = ["pytest", "mypy", "types-tqdm"]
 ase = ["ase"]
 tqdm = ["tqdm"]
 
@@ -19,3 +19,12 @@ include = ["scattersim*"]
 
 [tool.setuptools.package-data]
 scattersim = ["data/*.json"]
+
+[tool.mypy]
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = "ase.*"
+ignore_missing_imports = true
